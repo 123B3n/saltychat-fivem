@@ -101,6 +101,30 @@ namespace SaltyClient
         }
         #endregion
 
+        #region Decor Functions
+        private RadioType GetRadioType(int sender = -1)
+        {
+            RadioType Range = RadioType.LongRange;
+            RadioType Distributed = RadioType.None;
+            var Ped = API.PlayerPedId();
+
+            if (sender != -1)
+                Ped = API.GetPlayerPed(API.GetPlayerFromServerId(sender));
+
+            
+            if (API.DecorExistOn(Ped, "RadioType"))
+                Range = (RadioType)API.DecorGetInt(Ped, "RadioType");
+
+            if (API.DecorExistOn(Ped, "Distributed") && API.DecorGetBool(Ped, "Distributed"))
+                Distributed = RadioType.Distributed;
+
+            if (Distributed == RadioType.Distributed)
+                return Range | Distributed;
+            else
+                return Range;
+        }
+        #endregion
+
         #region Events
         [EventHandler("onClientResourceStop")]
         private void OnResourceStop(string resourceName)
@@ -261,6 +285,7 @@ namespace SaltyClient
         [EventHandler(Event.SaltyChat_IsSendingRelayed)]
         private void OnPlayerIsSendingRelayed(string handle, string teamSpeakName, string radioChannel, bool isSending, bool stateChange, dynamic position, bool direct, List<dynamic> relays)
         {
+            RadioType OwnType = GetRadioType();
             if (!Int32.TryParse(handle, out int serverId))
                 return;
 
@@ -274,8 +299,8 @@ namespace SaltyClient
                             this.Configuration.ServerUniqueIdentifier,
                             new RadioCommunication(
                                 this.TeamSpeakName,
-                                RadioType.LongRange,
-                                RadioType.LongRange,
+                                OwnType,
+                                OwnType,
                                 stateChange,
                                 direct,
                                 this.SecondaryRadioChannel == radioChannel,
@@ -305,6 +330,7 @@ namespace SaltyClient
             }
             else if (this.GetOrCreateVoiceClient(serverId, teamSpeakName, out VoiceClient client))
             {
+                RadioType SenderType = GetRadioType(serverId);
                 if (client.DistanceCulled)
                 {
                     client.LastPosition = new CitizenFX.Core.Vector3(position[0], position[1], position[2]);
@@ -319,8 +345,8 @@ namespace SaltyClient
                             this.Configuration.ServerUniqueIdentifier,
                             new RadioCommunication(
                                 client.TeamSpeakName,
-                                RadioType.LongRange,
-                                RadioType.LongRange,
+                                SenderType,
+                                OwnType,
                                 stateChange,
                                 direct,
                                 this.SecondaryRadioChannel == radioChannel,
